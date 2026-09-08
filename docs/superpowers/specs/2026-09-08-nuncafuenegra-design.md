@@ -427,16 +427,51 @@ inatacable.
 
 ## 12. Decisiones abiertas
 
-1. **Requisito pendiente del usuario.** Queda un requisito mencionado pero no
-   formulado. Se incorpora como enmienda antes de escribir el plan de
-   implementación si llega a tiempo.
+Ninguna.
 
-Todo lo demás está cerrado: nombre, estructura, stack, paleta, tipografía,
-tratamiento de imagen, marco editorial, presupuesto y SEO.
+El requisito que quedaba pendiente de formular resultó ser el de documentación
+IA-first, recogido en §13. Si aparece alguno más, se añade aquí como enmienda.
+
+Cerrado: nombre, estructura, stack, paleta, tipografía, tratamiento de imagen,
+marco editorial, presupuesto, SEO y documentación.
 
 ---
 
-## 13. Fuentes
+## 13. Documentación IA-first
+
+Requisito del usuario: el repositorio debe poder retomarse con otra IA sin que
+nada quede en la cabeza de nadie.
+
+**El riesgo que se está mitigando no es la incomprensión, es la buena intención.**
+Un agente que abre este repo sin contexto no se queda parado: actúa. Ve un sitio
+sin modo oscuro y lo añade. Ve «no las tiñen» y lo «mejora» a algo más pegadizo y
+falso. Ve `mix-blend-mode: multiply` y lo quita porque parece un apaño. Cada una
+de esas ayudas destruye una decisión tomada a conciencia.
+
+Por eso la documentación de este repo es **defensiva**, no descriptiva.
+
+| Artefacto | Función |
+|---|---|
+| `AGENTS.md` (raíz) | Punto de entrada único, en el estándar que leen varias herramientas. Qué es el proyecto, las cinco reglas irrompibles, cómo se arranca, dónde está todo. |
+| `CLAUDE.md` (raíz) | Un puntero de una línea a `AGENTS.md`. Sin duplicar contenido y sin atar el repo a una sola herramienta. |
+| `docs/NO-TOCAR.md` | Lo que otra IA va a intentar arreglar y no debe, cada línea con su motivo. El fichero más valioso del repositorio. |
+| `docs/DECISIONES.md` | Registro de decisiones con su porqué, incluidas las ya cerradas. En particular el reencuadre editorial: sin el motivo por escrito, se deshace solo. |
+| `docs/GLOSARIO.md` | Envero, aderezo, aliñado, negras naturales, oxidación, estilo californiano. Un agente que no sepa qué es el envero escribirá errores con total seguridad. |
+| Cabeceras de fichero | `fuentes.ts`, `narrativa.ts`, `tokens.css` y `Acuarela.astro` empiezan con un comentario que dice qué regla protegen y qué test salta al romperla. |
+| `tests/documentacion.test.ts` | Guardián contra la podredumbre: falla si `AGENTS.md` cita una ruta inexistente o si un fichero clave pierde su cabecera. |
+
+**Y el principio que lo sostiene todo:** los tests son la documentación ejecutable.
+Un `AGENTS.md` que dice «no escribas *teñidas*» es una sugerencia. Un test que
+falla es un hecho. Los guardianes de §11 no son control de calidad: son el
+mecanismo por el que este spec sobrevive a sesiones futuras que no lo han leído.
+
+Idioma: **todo en español**, como el resto del repo. Las reglas de copy hay que
+citarlas en español de todas formas, y mezclar idiomas es lo que más despista a un
+agente.
+
+---
+
+## 14. Fuentes
 
 - **Real Decreto 679/2016**, de 16 de diciembre, norma de calidad de las aceitunas
   de mesa. Texto consolidado.

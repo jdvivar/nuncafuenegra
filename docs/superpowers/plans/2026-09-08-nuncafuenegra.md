@@ -45,6 +45,14 @@ Prohibidos los grises y los `rgba()` de negro para texto: viran a gris sucio sob
 
 **Regla de oro de accesibilidad (spec §6):** ninguna animación puede esconder texto del DOM. Prohibidos `display: none` y `content-visibility: hidden` sobre contenido. Solo `opacity`, `transform` y `color`. `prefers-reduced-motion: reduce` desactiva todo el movimiento.
 
+**Documentación IA-first (spec §13):** el repo debe poder retomarse con otra IA
+sin contexto previo. `AGENTS.md` es el punto de entrada; `docs/NO-TOCAR.md` lista
+lo que un agente intentará «arreglar» y no debe. Todo en español. Los ficheros
+`src/content/fuentes.ts`, `src/content/narrativa.ts`, `src/styles/tokens.css` y
+`src/components/ui/Acuarela.astro` empiezan con un comentario de cabecera que dice
+qué regla protegen y qué test salta al romperla. Los tests son la documentación
+ejecutable: una regla escrita sin test es una sugerencia.
+
 **Regla editorial (spec §3):** se señala la práctica y el vacío de la norma, **nunca las marcas**. La etiqueta de ejemplo es genérica y compuesta.
 
 ## Prerequisitos externos
@@ -232,6 +240,267 @@ Expected: PASS — 3 tests.
 ```bash
 git add package.json package-lock.json astro.config.mjs tsconfig.json .gitignore vitest.config.ts src/pages/index.astro tests/
 git commit -m "feat: andamiaje astro con guardián de presupuesto de cero javascript"
+```
+
+---
+
+### Task 1.5: Documentación IA-first (base)
+
+Va aquí, y no al final, porque el repo tiene que ser retomable desde el segundo
+commit. Necesita el Vitest de la Tarea 1.
+
+**Files:**
+- Create: `AGENTS.md`
+- Create: `CLAUDE.md`
+- Create: `docs/NO-TOCAR.md`
+- Create: `docs/GLOSARIO.md`
+- Create: `tests/documentacion.test.ts`
+
+**Interfaces:**
+- Consumes: nada.
+- Produces: `AGENTS.md` como punto de entrada único. Toda tarea posterior que cree
+  una regla nueva la añade a `docs/NO-TOCAR.md` si un agente pudiera deshacerla.
+
+- [ ] **Step 1: Write the failing test**
+
+`tests/documentacion.test.ts`:
+```ts
+import { describe, it, expect } from 'vitest'
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+const raiz = (rel: string) => join(process.cwd(), rel)
+const leer = (rel: string) => readFileSync(raiz(rel), 'utf8')
+
+const OBLIGATORIOS = [
+  'AGENTS.md',
+  'CLAUDE.md',
+  'docs/NO-TOCAR.md',
+  'docs/GLOSARIO.md',
+  'docs/superpowers/specs/2026-09-08-nuncafuenegra-design.md',
+  'docs/superpowers/plans/2026-09-08-nuncafuenegra.md',
+]
+
+describe('documentación IA-first (spec §13)', () => {
+  it('existen todos los documentos de entrada', () => {
+    for (const f of OBLIGATORIOS) expect(existsSync(raiz(f)), `falta ${f}`).toBe(true)
+  })
+
+  it('CLAUDE.md solo apunta a AGENTS.md, sin duplicar contenido', () => {
+    const c = leer('CLAUDE.md')
+    expect(c).toMatch(/AGENTS\.md/)
+    expect(c.length, 'CLAUDE.md duplica contenido en vez de apuntar').toBeLessThan(400)
+  })
+
+  it('toda ruta citada en AGENTS.md existe de verdad', () => {
+    const rutas = [...leer('AGENTS.md').matchAll(/`([^`\n]+)`/g)]
+      .map((m) => m[1])
+      .filter((t) => /^[\w./-]+\.(md|ts|css|astro|json|mjs|txt)$/.test(t) || t.endsWith('/'))
+    expect(rutas.length, 'AGENTS.md no cita ninguna ruta').toBeGreaterThan(3)
+    for (const r of rutas)
+      expect(existsSync(raiz(r.replace(/\/$/, ''))), `AGENTS.md cita ${r}, que no existe`).toBe(true)
+  })
+
+  it('AGENTS.md enuncia las reglas irrompibles', () => {
+    const a = leer('AGENTS.md')
+    for (const regla of [/te[ñn]idas/i, /0 KB/i, /naturales/, /#000/])
+      expect(a, `AGENTS.md no menciona ${regla}`).toMatch(regla)
+  })
+
+  it('NO-TOCAR.md da un motivo por cada prohibición', () => {
+    const lineas = leer('docs/NO-TOCAR.md')
+      .split('\n')
+      .filter((l) => l.trim().startsWith('- **'))
+    expect(lineas.length, 'muy pocas prohibiciones').toBeGreaterThanOrEqual(6)
+    for (const l of lineas)
+      expect(l, `sin motivo: ${l.slice(0, 50)}`).toMatch(/Por qué:/i)
+  })
+
+  it('el glosario define los términos del dominio', () => {
+    const g = leer('docs/GLOSARIO.md')
+    for (const t of ['envero', 'aderezo', 'aliñado', 'oxidación', 'negras naturales'])
+      expect(g.toLowerCase(), `falta ${t}`).toContain(t.toLowerCase())
+  })
+})
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx vitest run tests/documentacion.test.ts`
+Expected: FAIL — «falta AGENTS.md».
+
+- [ ] **Step 3: Write minimal implementation**
+
+`AGENTS.md`:
+```markdown
+# nuncafuenegra.com
+
+Sitio estático en español que explica por qué las «aceitunas negras» de lata son
+fruto recogido sin madurar y ennegrecido por oxidación, y no «aceitunas negras
+naturales».
+
+**Si eres un agente y acabas de abrir este repo, lee esto entero antes de tocar
+nada.** No es burocracia: hay cinco decisiones que parecen errores y no lo son, y
+si las «arreglas» rompes el proyecto.
+
+## Las cinco reglas irrompibles
+
+1. **No se dice «teñidas».** Las aceitunas oxidadas NO llevan colorante. El negro
+   es pigmento de la propia aceituna, que se oxida en medio alcalino. La sal de
+   hierro (E-579) no colorea: uniformiza. Escribir «teñidas», «colorante» o
+   «fraude» es factualmente falso y hay un test que lo impide.
+2. **Cero JavaScript.** `0 KB` enviados al cliente. Nada de islas, ni de un
+   `<script>` «pequeñito». El movimiento va con `animation-timeline` en CSS.
+3. **`#000` solo en el camino de la fábrica.** El negro puro es el artificio del
+   que habla el sitio; usarlo en cualquier otro sitio destruye el argumento
+   visual. El resto de la paleta es cálida y no tiene ni un gris.
+4. **La palabra clave es «naturales».** La tesis del sitio es legal, no química:
+   la norma obliga a declarar el color y NO obliga a declarar el proceso
+   (RD 679/2016, art. 12.3.b). La prueba para el lector es la ausencia de la
+   palabra «naturales» en la denominación, no el E-579.
+5. **Ninguna afirmación sin fuente.** Toda afirmación de hecho referencia un `id`
+   de la bibliografía. Si no hay fuente, no se escribe. Hay afirmaciones
+   explícitamente prohibidas por no estar verificadas.
+
+## Antes de escribir una línea
+
+| Documento | Qué contiene |
+|---|---|
+| `docs/NO-TOCAR.md` | Lo que vas a intentar arreglar y no debes, con su motivo. **Empieza por aquí.** |
+| `docs/GLOSARIO.md` | Envero, aderezo, aliñado, oxidación. Si no sabes qué es el envero, no puedes escribir el copy. |
+| `docs/superpowers/specs/2026-09-08-nuncafuenegra-design.md` | El diseño completo. §10 son los hechos verificados y §13 explica por qué existe esta documentación. El mapa de ficheros está en §7. |
+| `docs/superpowers/plans/2026-09-08-nuncafuenegra.md` | El plan de implementación, tarea a tarea, con casillas de progreso. **El estado del trabajo son esas casillas.** |
+
+## Cómo se arranca
+
+```bash
+npm install
+npm run acuarelas   # sustitutas provisionales, si aún no hay ilustraciones reales
+npm run dev
+npm test            # build + los guardianes del spec
+```
+
+Configuración en `package.json` y `astro.config.mjs`.
+
+## El error que vas a cometer
+
+Vas a leer el copy, pensar que «no las tiñen» es un matiz irrelevante y
+reescribirlo como «las tiñen» porque suena mejor. Ese cambio es la razón de que
+exista este fichero. La versión pegadiza es falsa, la desmontaron investigadores
+del CSIC, y el sitio se sostiene precisamente sobre ser el único que lo cuenta
+bien. Está explicado en `docs/DECISIONES.md`.
+```
+
+`CLAUDE.md`:
+```markdown
+# CLAUDE.md
+
+Las instrucciones de este repositorio están en `AGENTS.md`. Léelo antes de tocar
+nada: contiene cinco reglas que parecen errores y no lo son.
+```
+
+`docs/NO-TOCAR.md`:
+```markdown
+# No tocar
+
+Cada línea es algo que un agente sin contexto intentará mejorar. No lo son:
+mejoras, digo. Son decisiones.
+
+- **No añadas modo oscuro.** Por qué: el sitio tiene una identidad de papel
+  cálido, con `color-scheme: light only` declarado a propósito. Un tema oscuro
+  destruiría la paleta, que ES el argumento del sitio (spec §5.1).
+- **No metas Tailwind, React, Vue ni ningún framework.** Por qué: el presupuesto
+  es de 0 KB de JavaScript y el propietario del proyecto no quiere Tailwind. Hay
+  un test que falla si aparece un solo `.js` en `dist/`.
+- **No quites el `mix-blend-mode: multiply` de las acuarelas.** Por qué: no es un
+  apaño. Las ilustraciones llegan sobre papel blanco y el `multiply` hace
+  desaparecer ese blanco sin recurrir a PNG con alpha, que pesarían cuatro veces
+  más. Además tiñe las aguadas con el arena del fondo y unifica diez piezas
+  desiguales (spec §5.4).
+- **No escribas «teñidas», «colorante» ni «fraude».** Por qué: es falso. No hay
+  colorante, y el etiquetado cumple la norma. Investigadores del CSIC lo
+  desmontaron públicamente y el valor de este sitio es ser el que lo cuenta bien.
+- **No resucites la afirmación de los polifenoles.** Por qué: no existe cifra
+  comparativa verificada entre oxidadas y naturales. Se buscó y no se encontró.
+  Los propios autores del CSIC señalan que ambos tipos tienen compuestos
+  fenólicos y que lo relevante es el sodio (spec §10.3).
+- **No inventes tiempos ni temperaturas del proceso.** Por qué: no se ha
+  localizado fuente fiable. El copy dice «tratamientos sucesivos», sin números,
+  a propósito. Un test busca patrones de duración en la pantalla de fábrica.
+- **No nombres marcas ni fotografíes envases reales.** Por qué: envejece mal en un
+  sitio estático, exige verificar formulaciones que cambian, y expone a
+  reclamaciones sin añadir nada al argumento. La etiqueta de ejemplo es genérica
+  y compuesta (spec §3).
+- **No añadas un menú de navegación a la narrativa.** Por qué: un header con
+  navegación mata la pantalla de apertura. Los enlaces a las páginas de respuesta
+  viven en la sección 10 y en el pie (spec §4.1).
+- **No uses `display: none`, `visibility: hidden` ni `content-visibility: hidden`
+  sobre contenido.** Por qué: ninguna animación puede esconder texto del DOM, ni
+  para el lector de pantalla ni para el rastreador. Solo `opacity`, `transform` y
+  `color` (spec §6).
+- **No borres ni relajes los tests de `tests/`.** Por qué: no son control de
+  calidad, son el mecanismo por el que estas decisiones sobreviven a sesiones
+  futuras que no han leído el spec.
+```
+
+`docs/GLOSARIO.md`:
+```markdown
+# Glosario
+
+Vocabulario del dominio. Los cuatro primeros términos son los que más se usan mal.
+
+**Envero.** El periodo en que la aceituna cambia de color, de verde a rosado, rosa
+vino o castaño, antes de la madurez completa. Suele caer entre octubre y
+noviembre. Una aceituna «de color cambiante» es la recogida durante el envero.
+
+**Aderezo.** Proceso en el que las aceitunas reciben un tratamiento alcalino para
+quitarles el amargor y después se acondicionan en salmuera, donde fermentan
+parcial o totalmente. No es lo mismo que la oxidación.
+
+**Aliñado.** Añadir a la salmuera condimentos o especias, y eventualmente
+vinagre: ajo, hinojo, tomillo, cáscara de naranja. Es lo que la gente llama
+«aceitunas aliñadas».
+
+**Oxidación.** Proceso por el que aceitunas verdes o de color cambiante, que antes
+se conservan en salmuera, se ennegrecen por oxidación en medio alcalino. Es el
+proceso que produce las «aceitunas negras» de lata.
+
+**Negras naturales.** Categoría legal: aceitunas obtenidas de frutos recogidos en
+plena madurez o poco antes. Su color puede ser negro rojizo, negro violáceo,
+violeta, negro verdoso o castaño oscuro.
+
+**Negras.** Categoría legal distinta: aceitunas obtenidas de frutos que, sin estar
+totalmente maduros, han sido oscurecidos mediante oxidación. Es la que llena las
+latas. La única diferencia de nombre con la anterior es la palabra «naturales».
+
+**Estilo californiano.** Nombre habitual en la industria para la aceituna negra
+oxidada. «Estilo español» se refiere a la aceituna verde aderezada y fermentada.
+
+**Gluconato ferroso (E-579) / lactato ferroso (E-585).** Sales de hierro
+autorizadas como estabilizantes del color, solo en aceitunas ennegrecidas por
+oxidación, con un máximo de 150 mg/kg expresado en hierro. **No son colorantes:**
+forman complejos con los compuestos fenólicos de la propia aceituna y convierten
+un marrón muy oscuro en un negro uniforme.
+
+**Compuestos fenólicos.** Los responsables del amargor de la aceituna y, al
+oxidarse, del color oscuro. El pigmento negro sale de aquí, no de un aditivo.
+
+**Salmuera.** Disolución de sal en agua donde la aceituna se conserva y fermenta.
+
+**Empeltre.** Variedad aragonesa, la «negra de Aragón». Se cura en seco hasta
+arrugarse. Es negra natural, sin proceso químico.
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npm test`
+Expected: PASS — 9 tests (3 de presupuesto + 6 de documentación).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add AGENTS.md CLAUDE.md docs/NO-TOCAR.md docs/GLOSARIO.md tests/documentacion.test.ts
+git commit -m "docs: punto de entrada para agentes con reglas irrompibles y glosario"
 ```
 
 ---
@@ -3219,6 +3488,256 @@ git commit -m "feat: imagen social generada, cabeceras de caché y presupuesto f
 
 ---
 
+### Task 16: Cierre documental
+
+Última tarea: registrar el porqué de las decisiones ya tomadas, poner las
+cabeceras en los ficheros que protegen reglas, y añadir a `AGENTS.md` el mapa del
+repo, que hasta ahora no existía.
+
+**Files:**
+- Create: `docs/DECISIONES.md`
+- Modify: `AGENTS.md`
+- Modify: `src/content/fuentes.ts`, `src/content/narrativa.ts`, `src/styles/tokens.css`, `src/components/ui/Acuarela.astro` (cabeceras)
+- Modify: `tests/documentacion.test.ts`
+
+**Interfaces:**
+- Consumes: todo lo construido en las tareas 1 a 15.
+- Produces: nada que consuma otra tarea. Es el cierre.
+
+- [ ] **Step 1: Write the failing test**
+
+Añadir a `tests/documentacion.test.ts`:
+```ts
+describe('cierre documental (spec §13)', () => {
+  const CABECERAS: [string, RegExp][] = [
+    ['src/content/fuentes.ts', /copy\.test\.ts/],
+    ['src/content/narrativa.ts', /copy\.test\.ts/],
+    ['src/styles/tokens.css', /paleta\.test\.ts/],
+    ['src/components/ui/Acuarela.astro', /multiply/],
+  ]
+
+  it('existe el registro de decisiones', () => {
+    expect(existsSync(raiz('docs/DECISIONES.md'))).toBe(true)
+  })
+
+  it('cada decisión registrada explica su motivo', () => {
+    const bloques = leer('docs/DECISIONES.md').split(/^## /m).slice(1)
+    expect(bloques.length, 'muy pocas decisiones').toBeGreaterThanOrEqual(6)
+    for (const b of bloques)
+      expect(b, `sin motivo: ${b.slice(0, 40)}`).toMatch(/\*\*Por qué:\*\*/)
+  })
+
+  it('registra el reencuadre editorial, que es el que se deshace solo', () => {
+    const d = leer('docs/DECISIONES.md')
+    expect(d).toMatch(/CSIC/)
+    expect(d).toMatch(/12\.3\.b/)
+  })
+
+  it('los ficheros que protegen una regla lo dicen en su cabecera', () => {
+    for (const [f, test] of CABECERAS) {
+      const cabecera = leer(f).slice(0, 700)
+      expect(cabecera, `${f} sin cabecera`).toMatch(/AGENTS\.md|NO-TOCAR/)
+      expect(cabecera, `${f} no dice qué test salta`).toMatch(test)
+    }
+  })
+
+  it('AGENTS.md ya incluye el mapa del repo', () => {
+    expect(leer('AGENTS.md')).toMatch(/src\/components\/narrativa\//)
+  })
+})
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx vitest run tests/documentacion.test.ts`
+Expected: FAIL — «existe el registro de decisiones».
+
+- [ ] **Step 3: Write minimal implementation**
+
+`docs/DECISIONES.md`:
+```markdown
+# Registro de decisiones
+
+Qué se decidió, y sobre todo por qué. Sin el porqué, la próxima sesión deshace la
+decisión de buena fe.
+
+## El sitio no dice que las aceitunas estén teñidas
+
+**Decisión:** el copy afirma que el fruto se recoge sin madurar y se ennegrece por
+oxidación, que el pigmento es de la propia aceituna, y que la sal de hierro
+uniformiza el color en lugar de aportarlo.
+
+**Por qué:** la versión popular («las tiñen») es falsa. El brief inicial del
+proyecto ya decía «oxidadas artificialmente», correctamente; la deriva hacia
+«teñidas» se introdujo al redactar el primer borrador del diseño y se corrigió al
+verificar las fuentes. Javier Sánchez Perona (CSIC, Instituto de la Grasa) y Marta
+Berlanga Del Pozo publicaron «Todas las aceitunas negras de mesa son de verdad»
+explicando que no hay colorante, que el negro son pigmentos de tipo melanina
+formados a partir de los compuestos fenólicos del propio fruto, y que la sal de
+hierro forma complejos con esos fenoles. Publicar la versión pegadiza habría hecho
+el sitio desmontable en un tuit.
+
+**Consecuencia:** «teñidas», «colorante» y «fraude» son palabras prohibidas, con
+un test que lo comprueba.
+
+## La tesis es legal, no química
+
+**Decisión:** la columna vertebral del sitio es el artículo 12.3.b del Real Decreto
+679/2016: declarar el proceso de elaboración es una mención **voluntaria**,
+mientras que declarar el color es obligatoria. Y el artículo 4 define «negras»
+(oxidadas) y «negras naturales» (recogidas en plena madurez) como categorías
+distintas.
+
+**Por qué:** es el único ángulo que resiste al contraargumento del CSIC. Ellos
+tienen razón en la química, en la legalidad y en la ausencia de riesgo. Donde
+queda un hueco real es en el vocabulario: quien compra «aceitunas negras» cree
+comprar fruta madurada en el árbol, y la norma permite no aclarárselo. Eso es
+verificable, citable y no lo estaba contando nadie.
+
+**Consecuencia:** la prueba que se le da al lector es la ausencia de la palabra
+«naturales» en la denominación. El E-579 pasa a ser confirmación, no prueba.
+
+## La sección 10 admite lo que el sitio no sabe
+
+**Decisión:** la última pantalla cita y enlaza el artículo del CSIC dándole la
+razón, aclara que no es fraude ni riesgo sanitario, y dice explícitamente qué dos
+cosas no se han podido verificar.
+
+**Por qué:** es lo único que hace creíbles las nueve pantallas anteriores. Un sitio
+que solo acusa se lee como panfleto. Y desmontar el bulo que nos beneficiaría es
+el activo principal: hay cientos de artículos repitiendo «van teñidas» y ninguno
+que lo corrija con el BOE en la mano.
+
+## Cero JavaScript y CSS ligado al scroll
+
+**Decisión:** 0 KB de JS. El movimiento con `animation-timeline: view()`, envuelto
+en `@supports`, y sin él se ven los estados finales estáticos.
+
+**Por qué:** el requisito era «que cargue lo más rápido posible». Una narrativa sin
+estado no necesita runtime. Y el propietario del proyecto no quiere React ni
+Tailwind.
+
+**Consecuencia:** un test falla si aparece un solo `.js` en `dist/`. Solo se
+permite `<script type="application/ld+json">`, que no es ejecutable.
+
+## El `#000` solo en el camino de la fábrica
+
+**Decisión:** toda la paleta es cálida y no contiene ni un gris ni un negro puro,
+salvo en los elementos del camino industrial.
+
+**Por qué:** el color honesto de una aceituna madura es granate, violeta o castaño
+oscuro; nunca `#000`. El negro absoluto y uniforme ES el artificio del que habla
+el sitio. Usarlo en cualquier otra parte destruye el argumento visual. Por la
+misma razón la fábrica se compone en monoespaciada y el árbol en serif: la
+tipografía ejecuta el argumento, no lo acompaña.
+
+## Las acuarelas van en AVIF sobre blanco con `multiply`
+
+**Decisión:** las ilustraciones se generan con IA sobre papel blanco y se integran
+con `mix-blend-mode: multiply` sobre el fondo arena.
+
+**Por qué:** un PNG con alpha pesaría cuatro o cinco veces más y los bordes aguados
+se recortan mal. Pedirle a la IA el fondo exacto no funciona: nunca da el mismo
+hex. El `multiply` hace desaparecer el blanco, mantiene la compresión y, de
+propina, tiñe las aguadas con el arena, lo que unifica diez piezas que la IA
+entregará desiguales. Es la paleta del sitio imponiéndose a la de la máquina.
+
+**Consecuencia:** hay una línea de crédito de IA en la sección 10. Un sitio que
+habla de apariencia artificial y se ilustra con IA sin decirlo es munición para un
+lector hostil.
+
+## Una narrativa larga más cuatro páginas de respuesta
+
+**Decisión:** la portada es un scroll narrativo de diez pantallas sin menú de
+cabecera. Detrás hay cuatro páginas sobrias que responden una pregunta cada una.
+
+**Por qué:** para «aceitunas negras» a secas no hay nada que rascar: ese resultado
+es supermercado y receta, intención de compra. El terreno ganable es el racimo de
+preguntas largas, y una sola página solo puede optar a una intención. La narrativa
+convierte y se comparte; las páginas de respuesta traen la gente de Google. Y el
+menú de cabecera se descartó porque mata la pantalla de apertura.
+
+## Se señala la práctica, nunca las marcas
+
+**Decisión:** se recomiendan variedades y se explica la norma. No se nombra ninguna
+marca ni se fotografía ningún envase real. La etiqueta del decodificador es
+genérica y compuesta.
+
+**Por qué:** nombrar marcas exige verificar y mantener al día formulaciones que
+cambian, envejece pésimamente en un sitio estático sin CMS, y expone a
+reclamaciones sin añadir nada al argumento. Además, el lector se queda con una
+habilidad en vez de con una lista.
+```
+
+Añadir a `AGENTS.md`, antes de la sección «El error que vas a cometer»:
+```markdown
+## Mapa del repo
+
+| Ruta | Qué hay |
+|---|---|
+| `src/content/narrativa.ts` | El copy de las diez pantallas. **Todo el texto se edita aquí, no en los componentes.** |
+| `src/content/fuentes.ts` | La bibliografía. Toda afirmación referencia un `id` de aquí. |
+| `src/content/respuestas/` | Las cuatro páginas de respuesta, en Markdown. |
+| `src/components/narrativa/` | Un componente por pantalla, del 01 al 10. |
+| `src/components/figuras/` | Los diagramas en SVG y CSS: bifurcación, línea de proceso, decodificador, comparador. |
+| `src/components/ui/` | Piezas reutilizables: acuarela, prosa, bibliografía. |
+| `src/styles/tokens.css` | La paleta y la escala. Ningún componente declara colores literales. |
+| `src/assets/acuarelas/` | Las diez ilustraciones. Se sustituyen sin tocar código. |
+| `tests/` | Los guardianes del spec. No los relajes: lee `docs/NO-TOCAR.md`. |
+| `scripts/` | Generación de acuarelas provisionales y de la imagen social. |
+```
+
+Cabeceras. Al principio de `src/content/fuentes.ts` y `src/content/narrativa.ts`:
+```ts
+/**
+ * Copy y bibliografía de la narrativa. Lee AGENTS.md antes de editar.
+ *
+ * REGLA: prohibidas las palabras «teñidas», «colorante» y «fraude» (son falsas),
+ * y toda mención a pérdida de polifenoles o a tiempos concretos del proceso
+ * (no verificados). Toda afirmación de hecho referencia un id de FUENTES.
+ * Si lo rompes, falla tests/copy.test.ts.
+ */
+```
+
+Al principio de `src/styles/tokens.css`:
+```css
+/**
+ * Paleta del sitio. Lee AGENTS.md antes de editar.
+ *
+ * REGLA: toda cálida, sin un solo gris ni rgba() de negro para texto. El negro
+ * puro (--negro) se usa EXCLUSIVAMENTE en el camino de la fábrica: es el
+ * artificio del que habla el sitio. Sin modo oscuro, a propósito.
+ * Si lo rompes, falla tests/paleta.test.ts.
+ */
+```
+
+Al principio de `src/components/ui/Acuarela.astro`, dentro del frontmatter:
+```astro
+---
+/**
+ * Acuarela. Lee docs/NO-TOCAR.md antes de editar.
+ *
+ * REGLA: no quites el mix-blend-mode: multiply. Las ilustraciones llegan sobre
+ * papel blanco y el multiply lo hace desaparecer sin recurrir a PNG con alpha,
+ * que pesaría 4-5x. De propina, tiñe las aguadas con el arena del fondo y
+ * unifica diez piezas desiguales. No es un apaño: es la decisión.
+ */
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npm test && npm run test:a11y`
+Expected: PASS — 68 tests en Vitest y las cinco rutas limpias en Playwright.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add docs/DECISIONES.md AGENTS.md src/content src/styles/tokens.css src/components/ui/Acuarela.astro tests/documentacion.test.ts
+git commit -m "docs: registro de decisiones, mapa del repo y cabeceras de reglas"
+```
+
+---
+
 ## Verificación de cobertura del spec
 
 | Sección del spec | Tareas |
@@ -3239,6 +3758,7 @@ git commit -m "feat: imagen social generada, cabeceras de caché y presupuesto f
 | §10.3 Prohibiciones | 4 (polifenoles), 9 (cifras de tiempos) |
 | §10.5 Contraargumento del CSIC | 12 |
 | §11 Riesgos | los guardianes de 2, 4, 9, 13 |
+| §13 Documentación IA-first | 1.5 (entrada, reglas, glosario), 16 (decisiones, mapa, cabeceras) |
 
 **Pendiente por decisión del usuario:** el requisito de §12 del spec, que aún no
 se ha formulado. Cuando aparezca, se añade como tarea nueva antes de la 15.
